@@ -5,7 +5,7 @@
 - 오늘, 내일, 모레까지 3일간의 날씨를 오전 6시, 오후 3시 기준으로 표시
 - Open-Meteo API 사용 (인증키 불필요, 무료)
 
-GitHub 날씨 리포트 주소: https://github.com/<내-아이디>/<저장소-이름>   # <- 본인 주소로 반드시 수정!
+GitHub 날씨 리포트 주소: https://github.com/edi0oa/weather-report
 """
 
 import json
@@ -125,12 +125,35 @@ def print_report(report):
         print(big)
 
 
+def save_json(report):
+    filename = f"weather_{report['city']}_{datetime.now():%Y%m%d_%H%M%S}.json"
+    with open(filename, "w", encoding="utf-8") as f:
+        json.dump(report, f, ensure_ascii=False, indent=2)
+    print(f"💾 저장 완료: {filename}")
+
+
 def main():
-    city = input(f"지역을 입력하세요 (기본값: {DEFAULT_CITY}): ").strip() or DEFAULT_CITY
-    name, lat, lon = get_coordinates(city)
-    data = fetch_weather(lat, lon)
-    report = build_report(name, lat, lon, data)
+    print("🌤️ 날씨 예보 프로그램 (Open-Meteo API)")
+    print("-" * 45)
+    print(f"오전 6 시, 오후 3 시 기준으로 {FORECAST_DAYS} 일간 날씨를 제공합니다.")
+    print("-" * 45)
+
+    city = input(f"\n날씨를 확인할 지역을 입력하세요 (기본값: {DEFAULT_CITY}): ").strip()
+    if not city:
+        city = DEFAULT_CITY
+
+    try:
+        name, lat, lon = get_coordinates(city)
+        print(f"\n📍 {name} (위도: {lat:.4f}, 경도: {lon:.4f}) 의 날씨 정보를 가져옵니다...")
+        report = build_report(name, lat, lon, fetch_weather(lat, lon))
+    except (requests.RequestException, ValueError) as e:
+        print(f"\n❌ 날씨 정보를 가져오지 못했습니다: {e}")
+        return
+
     print_report(report)
+
+    if input("\n날씨 정보를 JSON 파일로 저장하시겠습니까? (y/n): ").strip().lower() == "y":
+        save_json(report)
 
 
 if __name__ == "__main__":
