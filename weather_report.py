@@ -21,6 +21,20 @@ FORECAST_DAYS = 3                 # 2일 이상 자유
 DAY_LABELS = ["오늘", "내일", "모레", "글피", "그글피", "3일 뒤", "4일 뒤"]
 TARGET_HOURS = [(6, "오전", "🌅"), (15, "오후", "🌇")]
 
+# WMO 날씨 코드 -> 한글 설명
+WEATHER_CODES = {
+    0: "맑음", 1: "주로 맑음", 2: "부분적으로 흐림", 3: "흐림",
+    45: "안개", 48: "서리 안개",
+    51: "약한 이슬비", 53: "이슬비", 55: "강한 이슬비",
+    56: "약한 어는 이슬비", 57: "강한 어는 이슬비",
+    61: "약한 비", 63: "비", 65: "강한 비",
+    66: "약한 어는 비", 67: "강한 어는 비",
+    71: "약한 눈", 73: "눈", 75: "강한 눈", 77: "싸락눈",
+    80: "약한 소나기", 81: "소나기", 82: "강한 소나기",
+    85: "약한 눈 소나기", 86: "강한 눈 소나기",
+    95: "뇌우", 96: "약한 우박 동반 뇌우", 99: "강한 우박 동반 뇌우",
+}
+
 
 def get_coordinates(city):
     """지역 이름 -> (표시 이름, 위도, 경도)"""
@@ -51,12 +65,50 @@ def fetch_weather(lat, lon):
     return res.json()
 
 
+def build_report(city, lat, lon, data):
+    """API 응답 -> 출력/저장용 딕셔너리"""
+    hourly = data["hourly"]
+    index = {t: i for i, t in enumerate(hourly["time"])}
+    daily = data["daily"]
+
+    days = []
+    for d, date_str in enumerate(daily["time"]):
+        slots = []
+        for hour, ampm, icon in TARGET_HOURS:
+            i = index.get(f"{date_str}T{hour:02d}:00")
+            if i is None:
+                continue
+            slots.append({
+                "icon": icon,
+                "time": f"{ampm} {hour:02d}:00",
+                "weather": WEATHER_CODES.get(hourly["weather_code"][i], "알 수 없음"),
+                "temperature": round(hourly["temperature_2m"][i]),
+                "precipitation_probability": hourly["precipitation_probability"][i],
+                "humidity": hourly["relative_humidity_2m"][i],
+                "wind_speed": round(hourly["wind_speed_10m"][i]),
+            })
+        days.append({
+            "label": DAY_LABELS[d],
+            "date": datetime.strptime(date_str, "%Y-%m-%d").strftime("%m.%d."),
+            "slots": slots,
+            "temp_min": round(daily["temperature_2m_min"][d]),
+            "temp_max": round(daily["temperature_2m_max"][d]),
+        })
+    return {
+        "city": city,
+        "latitude": lat,
+        "longitude": lon,
+        "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "days": days,
+    }
+
+
 def main():
     city = input(f"지역을 입력하세요 (기본값: {DEFAULT_CITY}): ").strip() or DEFAULT_CITY
     name, lat, lon = get_coordinates(city)
-    print(f"📍 {name} (위도: {lat:.4f}, 경도: {lon:.4f})")
     data = fetch_weather(lat, lon)
-    print("예보 데이터 수신 완료:", len(data["hourly"]["time"]), "개 시간 데이터")
+    report = build_report(name, lat, lon, data)
+    print(json.dumps(report, ensure_ascii=False, indent=2))
 
 
 if __name__ == "__main__":
