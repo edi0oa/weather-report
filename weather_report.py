@@ -103,12 +103,34 @@ def build_report(city, lat, lon, data):
     }
 
 
+def print_report(report):
+    big = "=" * 70
+    small = "-" * 55
+    print()
+    print(big)
+    print(f"🌤️ {report['city']} 날씨 예보 (오전 6 시 / 오후 3 시 기준)")
+    print(big)
+    for day in report["days"]:
+        print(f"\n📅 {day['label']} ({day['date']})")
+        print(small)
+        for s in day["slots"]:
+            print(f"\n  {s['icon']} {s['time']}")
+            print(f"    날씨: {s['weather']}")
+            print(f"    기온: {s['temperature']} °C")
+            print(f"    강수확률: {s['precipitation_probability']}%")
+            print(f"    습도: {s['humidity']}%")
+            print(f"    풍속: {s['wind_speed']} m/s")
+        print(f"\n  🌡️ 일일 기온: 최저 {day['temp_min']} °C / 최고 {day['temp_max']} °C")
+        print()
+        print(big)
+
+
 def main():
     city = input(f"지역을 입력하세요 (기본값: {DEFAULT_CITY}): ").strip() or DEFAULT_CITY
     name, lat, lon = get_coordinates(city)
     data = fetch_weather(lat, lon)
     report = build_report(name, lat, lon, data)
-    print(json.dumps(report, ensure_ascii=False, indent=2))
+    print_report(report)
 
 
 if __name__ == "__main__":
